@@ -45,11 +45,11 @@ class MoodeHandler(BaseActionHandler):
         return 'moode'
 
     def read_cfg_system(self):
-        response = self._send_command('GET', 'moode.php?cmd=readcfgsystem')
+        response = self._send_command('GET', 'cfg-table.php?cmd=get_cfg_system')
         return json.loads(response.content.decode('utf-8'))
 
     def _read_mpd_status(self):
-        response = self._send_command('GET', 'moode.php?cmd=getmpdstatus')
+        response = self._send_command('GET', 'playback.php?cmd=get_mpd_status')
         return json.loads(response.content.decode('utf-8'))
 
     def verify(self, command_dict):
@@ -81,7 +81,7 @@ class MoodeHandler(BaseActionHandler):
 
         if active_renderer != desired_state and active_renderer in self.svc_map:
             # Make sure nothing else is playing
-            response = self._send_command('POST', 'moode.php?cmd=disconnect-renderer',
+            response = self._send_command('POST', 'renderer.php?cmd=disconnect-renderer',
                                           data={'job': self.svc_map[active_renderer]})
 
             for _ in range(15):     # Max 15s
@@ -126,9 +126,9 @@ class MoodeHandler(BaseActionHandler):
 
         # Worker commands
         if command == 'poweroff':
-            self._send_command('GET', 'moode.php?cmd=poweroff')
+            self._send_command('GET', 'system.php?cmd=poweroff')
         elif command == 'reboot':
-            self._send_command('GET', 'moode.php?cmd=reboot')
+            self._send_command('GET', 'system.php?cmd=reboot')
 
         # Moode commands
         elif command == 'play':
@@ -153,13 +153,13 @@ class MoodeHandler(BaseActionHandler):
         elif command == 'mute':
             self._send_command('GET', '?cmd=vol.sh+mute')
         elif command == 'fav-current-item':
-            response = self._send_command('GET', 'moode.php?cmd=playlist')
+            response = self._send_command('GET', 'queue.php?cmd=get_playqueue')
             if response and response.status_code == 200:
                 playlist = json.loads(response.content)
                 if playlist and isinstance(playlist, list) and len(playlist) > int(current_status['song']):
                     playlist_element = playlist[int(current_status['song'])]
                     if isinstance(playlist_element, dict) and 'file' in playlist_element:
-                        self._send_command('GET', 'moode.php?cmd=addfav&favitem=' +
+                        self._send_command('GET', 'playlist.php?cmd=add_item_to_favorites&item=' +
                                            quote(playlist_element['file'], safe=''))
 
         # Commands with values
@@ -171,9 +171,9 @@ class MoodeHandler(BaseActionHandler):
             if 'shuffled' in values and values['shuffled'] != bool(int(current_status['random'])):
                 self._send_command('GET', 'index.php?cmd=random+{value}'
                                    .format(value=1 if values['shuffled'] else 0))
-            self._send_command('POST', 'moode.php?cmd=clear_play_item', data={'path': values['value']})
+            self._send_command('POST', 'queue.php?cmd=clear_play_item', data={'path': values['value']})
         elif command == 'radio':
-            self._send_command('POST', 'moode.php?cmd=clear_play_item',
+            self._send_command('POST', 'queue.php?cmd=clear_play_item',
                                data={'path': f"RADIO/{values['value']}.pls"})
 
         elif command == 'custom':
